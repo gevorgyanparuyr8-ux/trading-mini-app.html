@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="hy">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crypto TopUp</title>
+    <script src="https://telegram.org/js/telegram-web-app.js?56"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0d1117;
+            --card: #161b22;
+            --text: #c9d1d9;
+            --green: #3fb950;
+            --blue: #58a6ff;
+            --yellow: #d2991d;
+            --border: #30363d;
+            --btn: #238636;
+            --red: #f85149;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 15px;
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            padding: 15px 0 5px;
+        }
+        .header h1 { font-size: 22px; color: var(--blue); }
+        .user-card {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 10px 15px;
+            text-align: center;
+            font-size: 13px;
+            color: #8b949e;
+            margin: 8px 0;
+        }
+        .balance-card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            margin: 12px 0;
+            border: 1px solid var(--border);
+        }
+        .balance-amount {
+            font-size: 38px;
+            font-weight: bold;
+            color: var(--green);
+            margin: 6px 0;
+        }
+        .balance-label { font-size: 12px; color: #8b949e; }
+        
+        .form-group { margin: 14px 0; }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 13px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 15px;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--btn);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .btn:disabled { opacity: 0.5; }
+        
+        .payment-card {
+            display: none;
+            background: var(--card);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 15px 0;
+            border: 2px solid var(--green);
+            text-align: center;
+        }
+        .payment-card.show { display: block; }
+        
+        .pay-amount {
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--yellow);
+            margin: 10px 0;
+        }
+        .pay-address {
+            background: #1a1f2b;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            word-break: break-all;
+            color: var(--blue);
+            margin: 12px 0;
+            border: 1px dashed var(--border);
+            user-select: all;
+            cursor: pointer;
+        }
+        .copy-btn {
+            background: #30363d;
+            color: var(--text);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .status.pending { background: #1a1f2b; color: var(--yellow); }
+        .status.success { background: #1a2b1a; color: var(--green); }
+        .status.error { background: #2b1a1a; color: var(--red); }
+        
+        .warning {
+            background: #1a1f2b;
+            border-left: 3px solid var(--yellow);
+            padding: 10px;
+            margin-top: 12px;
+            font-size: 11px;
+            color: #8b949e;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .error-box {
+            display: none;
+            background: #3d1f1f;
+            color: var(--red);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+        
+        .history { margin-top: 20px; }
+        .history h3 { font-size: 14px; color: #8b949e; margin-bottom: 8px; }
+        .history-item {
+            background: var(--card);
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+        .history-item .plus { color: var(--green); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="header"><h1>⚡ Crypto TopUp</h1></div>
+    <div class="user-card" id="userCard"></div>
+    
+    <div class="balance-card">
+        <div class="balance-label">💰 Ձեր Բալանս</div>
+        <div class="balance-amount" id="balanceDisplay">0.00</div>
+        <div style="color:#8b949e;font-size:12px;">USDT</div>
+    </div>
+    
+    <div class="form-group">
+        <label>Գումար (USD)</label>
+        <input type="number" id="amountInput" value="10" min="1" max="5000" step="1">
+    </div>
+    
+    <div class="form-group">
+        <label>Ցանց</label>
+        <select id="currencySelect">
+            <option value="usdttrc20">USDT TRC20 (Tron) ⚡</option>
+            <option value="usdtbsc">USDT BEP20 (BSC) ⚡</option>
+            <option value="usdterc20">USDT ERC20 (ETH)</option>
+            <option value="btc">Bitcoin (BTC)</option>
+            <option value="eth">Ethereum (ETH)</option>
+            <option value="ltc">Litecoin (LTC)</option>
+            <option value="trx">TRON (TRX)</option>
+            <option value="ton">TON</option>
+        </select>
+    </div>
+    
+    <button class="btn" id="createBtn" onclick="createInvoice()">🔄 Ստեղծել Վճարման Հասցե</button>
+    
+    <div class="error-box" id="errorBox"></div>
+    
+    <div class="payment-card" id="paymentCard">
+        <h3 style="color:#3fb950;margin-bottom:5px;">✅ Ուղարկեք այս հասցեին</h3>
+        <div class="pay-amount" id="payAmountDisplay"></div>
+        <div class="pay-address" id="payAddressDisplay" onclick="copyAddress()"></div>
+        <button class="copy-btn" onclick="copyAddress()">📋 Պատճենել Հասցեն</button>
+        <div class="status pending" id="statusDisplay">⏳ Սպասում ենք վճարմանը...</div>
+        <div class="warning">
+            ⚠️ Ուղարկեք <b>ճիշտ ցանցով</b>: Վճարումից հետո բալանսը կհամալրվի ավտոմատ:<br>
+            💡 Էջը կարող եք փակել — գումարը չի կորչի:
+        </div>
+    </div>
+    
+    <div class="history" id="historyBox" style="display:none;">
+        <h3>📋 Վերջին Համալրումները</h3>
+        <div id="historyList"></div>
+    </div>
+
+    <script>
+        // ==================== ԿՈՆՖԻԳՈՒՐԱՑԻԱ ====================
+        // ⚠️ ԱՅՍՏԵՂ ԴՐԵՔ ՁԵՐ API KEY-Ը!!!
+        const API_KEY = 'sqJWQM0kSm9kpOZY41sBpTck3G4AqtvV';
+        // ======================================================
+        
+        const API_URL = 'https://api.nowpayments.io/v1';
+        
+        // ==================== TELEGRAM ====================
+        let userId, username;
+        
+        if (window.Telegram?.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            
+            if (tg.initDataUnsafe?.user) {
+                userId = 'tg_' + tg.initDataUnsafe.user.id;
+                username = tg.initDataUnsafe.user.username || 
+                          tg.initDataUnsafe.user.first_name || 'User';
+            } else {
+                userId = 'tg_guest_' + Date.now();
+                username = 'Guest';
+            }
+        } else {
+            userId = localStorage.getItem('crypto_uid') || 'web_' + Date.now();
+            username = localStorage.getItem('crypto_uname') || 'TestUser';
+        }
+        
+        localStorage.setItem('crypto_uid', userId);
+        localStorage.setItem('crypto_uname', username);
+        document.getElementById('userCard').textContent = `👤 ${username} | ID: ${userId.slice(-10)}`;
+        
+        // ==================== ԲԱԼԱՆՍ ====================
+        function getBalance() {
+            return parseFloat(localStorage.getItem('bal_' + userId)) || 0;
+        }
+        function setBalance(val) {
+            localStorage.setItem('bal_' + userId, val);
+        }
+        function updateBalance() {
+            document.getElementById('balanceDisplay').textContent = getBalance().toFixed(2);
+        }
+        
+        // Պատմություն
+        function getHistory() {
+            try { return JSON.parse(localStorage.getItem('hist_' + userId)) || []; }
+            catch(e) { return []; }
+        }
+        function addHistory(entry) {
+            let h = getHistory();
+            h.unshift(entry);
+            if (h.length > 20) h = h.slice(0, 20);
+            localStorage.setItem('hist_' + userId, JSON.stringify(h));
+            renderHistory();
+        }
+        function renderHistory() {
+            const h = getHistory();
+            if (h.length === 0) return;
+            document.getElementById('historyBox').style.display = 'block';
+            document.getElementById('historyList').innerHTML = h.map(e => 
+                `<div class="history-item">
+                    <span>${e.time}</span>
+                    <span>${e.currency.toUpperCase()}</span>
+                    <span class="plus">+${e.amount.toFixed(2)} USDT</span>
+                </div>`
+            ).join('');
+        }
+        
+        updateBalance();
+        renderHistory();
+        
+        // ==================== ՍՏԵՂԾԵԼ ԻՆՎՈՅՍ ====================
+        async function createInvoice() {
+            const btn = document.getElementById('createBtn');
+            const amount = parseFloat(document.getElementById('amountInput').value);
+            const currency = document.getElementById('currencySelect').value;
+            
+            if (isNaN(amount) || amount < 1) {
+                showError('Գումարը պետք է լինի նվազագույնը 1 USD');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = '⏳ Ստեղծվում է...';
+            hideError();
+            
+            const orderId = userId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+            
+            try {
+                const res = await fetch(API_URL + '/invoice', {
+                    method: 'POST',
+                    headers: {
+                        'x-api-key': API_KEY,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        price_amount: amount,
+                        price_currency: 'usd',
+                        pay_currency: currency,
+                        order_id: orderId
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (!res.ok) throw new Error(data.message || 'API Error: ' + res.status);
+                
+                document.getElementById('payAmountDisplay').textContent = 
+                    `Ուղարկեք <b>${data.pay_amount}</b> ${currency.toUpperCase()}`;
+                document.getElementById('payAddressDisplay').textContent = data.pay_address;
+                document.getElementById('paymentCard').classList.add('show');
+                document.getElementById('statusDisplay').textContent = '⏳ Սպասում ենք վճարմանը...';
+                document.getElementById('statusDisplay').className = 'status pending';
+                
+                document.getElementById('paymentCard').scrollIntoView({ behavior: 'smooth' });
+                
+                pollPayment(data.id, amount, currency);
+                
+            } catch(err) {
+                showError('Սխալ: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 Ստեղծել Վճարման Հասցե';
+            }
+        }
+        
+        function pollPayment(invoiceId, amount, currency) {
+            let attempts = 0;
+            const maxAttempts = 120;
+            
+            const timer = setInterval(async () => {
+                attempts++;
+                try {
+                    const res = await fetch(API_URL + '/invoice/' + invoiceId, {
+                        headers: { 'x-api-key': API_KEY }
+                    });
+                    const data = await res.json();
+                    
+                    if (data.payment_status === 'finished') {
+                        clearInterval(timer);
+                        const newBal = getBalance() + amount;
+                        setBalance(newBal);
+                        updateBalance();
+                        
+                        document.getElementById('statusDisplay').textContent = 
+                            `✅ Վճարված! +${amount.toFixed(2)} USDT`;
+                        document.getElementById('statusDisplay').className = 'status success';
+                        
+                        addHistory({
+                            amount: amount,
+                            currency: currency,
+                            time: new Date().toLocaleString('hy-AM'),
+                            invoiceId: invoiceId
+                        });
+                        
+                        if (window.Telegram?.WebApp?.HapticFeedback) {
+                            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                        }
+                        
+                    } else if (data.payment_status === 'waiting' || data.payment_status === 'confirming') {
+                        document.getElementById('statusDisplay').textContent = 
+                            '🟡 Գումարը ստացված է, սպասում ենք հաստատման...';
+                        document.getElementById('statusDisplay').className = 'status pending';
+                        
+                    } else if (data.payment_status === 'expired') {
+                        clearInterval(timer);
+                        document.getElementById('statusDisplay').textContent = '❌ Ժամկետն անցել է';
+                        document.getElementById('statusDisplay').className = 'status error';
+                        
+                    } else if (data.payment_status === 'failed') {
+                        clearInterval(timer);
+                        document.getElementById('statusDisplay').textContent = '❌ Ձախողվել է';
+                        document.getElementById('statusDisplay').className = 'status error';
+                    }
+                    
+                    if (attempts >= maxAttempts) {
+                        clearInterval(timer);
+                        document.getElementById('statusDisplay').textContent = 
+                            '⏰ Սպասման ժամկետը լրացել է: Կապվեք աջակցման հետ:';
+                    }
+                    
+                } catch(err) {
+                    console.error(err);
+                }
+            }, 5000);
+        }
+        
+        function copyAddress() {
+            const addr = document.getElementById('payAddressDisplay').textContent;
+            if (!addr) return;
+            navigator.clipboard.writeText(addr).then(() => {
+                if (window.Telegram?.WebApp?.HapticFeedback) {
+                    window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+                }
+                alert('✅ Հասցեն պատճենված է!');
+            });
+        }
+        
+        function showError(msg) {
+            const box = document.getElementById('errorBox');
+            box.textContent = '❌ ' + msg;
+            box.style.display = 'block';
+        }
+        function hideError() {
+            document.getElementById('errorBox').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
